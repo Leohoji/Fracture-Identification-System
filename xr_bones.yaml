@@ -1,0 +1,10 @@
+# xr_bones.yaml
+
+train: /YOLODataSet/dataset/images/train
+val: /YOLODataSet/dataset/images/val
+
+# Number of classes
+nc: 2
+
+# Class names
+names: ["negative", "positive"]
