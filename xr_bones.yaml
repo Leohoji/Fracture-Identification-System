@@ -1,7 +1,6 @@
 # xr_bones.yaml
-
-train: /YOLODataSet/dataset/images/train
-val: /YOLODataSet/dataset/images/val
+train: C:/Users/User/Desktop/bone_fracture_detection_project/YOLODataSet/dataset/images/train
+val: C:/Users/User/Desktop/bone_fracture_detection_project/YOLODataSet/dataset/images/val
 
 # Number of classes
 nc: 2
