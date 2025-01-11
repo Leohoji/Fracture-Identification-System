@@ -3,7 +3,7 @@ train: C:/Users/User/Desktop/bone_fracture_detection_project/YOLODataSet/dataset
 val: C:/Users/User/Desktop/bone_fracture_detection_project/YOLODataSet/dataset/images/val
 
 # Number of classes
-nc: 2
+nc: 1
 
 # Class names
-names: ["negative", "positive"]
+names: ["positive"]
