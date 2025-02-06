@@ -1,4 +1,7 @@
 import sys
+import numpy as np
+from io import BytesIO
+from PIL import Image
 
 import ollama
 import streamlit as st
@@ -7,12 +10,26 @@ from langchain_ollama import ChatOllama
 
 
 def app_session_init():
+    # create a uploader for image
+    uploaded_file = st.file_uploader("Upload a file")
+    if uploaded_file:
+        st.write("Filename: ", uploaded_file.name)
+        
+        # To read file as bytes:
+        bytes_data = uploaded_file.getvalue()
+        caption = "I am a cat"
+        st.image(image=bytes_data, caption=caption, channels='RGB')
+        # Convert bytes to a PIL image
+        # image = Image.open(BytesIO(bytes_data))
+        # Convert to a numpy array
+        # numpy_array = np.array(image)
+
     # create a session for chat history
     if "chat_history" not in st.session_state:
         st.session_state["chat_history"] = [AIMessage("Hello, how can I help you?")]
     
     if "selected_model" not in st.session_state:
-        st.session_state["selected_model"] = get_models()[-1]
+        st.session_state["selected_model"] = "llama3.2"
 
     chat_history = st.session_state["chat_history"]
     for history in chat_history:
@@ -60,3 +77,6 @@ def run():
 
 if __name__ == "__main__":
     run()
+    
+    # To convert to a numpy array:
+    # numpy_array = np.fromstring(bytes_data, dtype=np.uint8)
