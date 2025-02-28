@@ -1,5 +1,6 @@
 import sys
 import numpy as np
+import pandas as pd
 from PIL import Image
 from io import BytesIO
 
@@ -12,11 +13,15 @@ from ultralytics import YOLO
 model = YOLO('models/runs_v5_detect_classification/detect/train/weights/best.pt')
 
 def app_session_init():
+    # Chat history initialization
+    if "chat_history" not in st.session_state:
+        st.session_state["chat_history"] = []
+
     # create a uploader for image
     uploaded_file = st.file_uploader("Upload a file", type=['jpg', 'jpeg', 'png'])
     # st.button("Detect", type="secondary", icon="✨")
-    
-    if uploaded_file:
+
+    if uploaded_file and not st.session_state.get("diagnosis_done", False):
         # Show original image
         caption = uploaded_file.name
         image_bytes_data = BytesIO(uploaded_file.getvalue())
@@ -25,7 +30,6 @@ def app_session_init():
         image_bytes_data.seek(0)
         image = Image.open(image_bytes_data).convert('RGB')
         image_array = np.array(image)
-        print(image_array.shape)
         
         # X-ray fracture detection
         results = model(image_array)
@@ -40,17 +44,36 @@ def app_session_init():
                 conf = box.conf  # Get confidence scores
 
         img_bbox = results[0].plot()
-        diagnosis = f"Diagnosis: {('fracture' if class_name=='positive' else 'normal')} || Confidence: {conf.cpu().numpy()[0]:.2f}"
+        diagnosis_result = 'fracture' if class_name == 'positive' else 'normal'
+        conf_value = conf.cpu().item() if hasattr(conf, 'cpu') else float(conf)
+        diagnosis = f"Diagnosis: {diagnosis_result} || Confidence: {conf_value:.2f}"
         st.image(image=img_bbox, caption=diagnosis, channels='RGB')        
 
-    # create a session for chat history
-    if "chat_history" not in st.session_state:
-        st.session_state["chat_history"] = [AIMessage("Hello, how can I help you?")]
-    
-    if "selected_model" not in st.session_state:
-        st.session_state["selected_model"] = "llama3.2"
+        # 以診斷結果詢問 LLM 問診（LLAMA3.2）
+        diagnosis_prompt = f"根據以下X光診斷結果，請問病人可能需要進一步哪些問診或處置？\n{diagnosis}"
+        selected_model = st.session_state.get("selected_model", "llama3.2")
+        llm = ChatOllama(model=selected_model, temperature=0.7)
+        llm_output = llm.stream(diagnosis_prompt)
+        with st.chat_message("ai"):
+            llm_answer = st.write_stream(llm_output)
+
+        # 將 LLM 回答插入 chat_history 作為第一則對話訊息
+        st.session_state["chat_history"].insert(0, AIMessage(llm_answer))
+
+        # 將診斷結果、信心度與建議事項整合成 dataframe 表格
+        data = {
+            "診斷結果": [diagnosis_result],
+            "信心度": [f"{conf_value:.2f}"],
+            "建議事項": [llm_answer]
+        }
+        df = pd.DataFrame(data)
+        st.dataframe(df)
+
+        # 設定診斷已處理的旗標，避免重複處理
+        st.session_state["diagnosis_done"] = True
 
     chat_history = st.session_state["chat_history"]
+    print(chat_history)
     for history in chat_history:
         if isinstance(history, AIMessage):
             st.chat_message("ai").write(history.content)
@@ -66,7 +89,8 @@ def get_models():
 
     models_list = []
     for model in models["models"]:
-        models_list.append(model["model"])
+        if model["model"] == "llama3.2:latest":
+            models_list.append(model["model"])
     
     return models_list
 
@@ -76,9 +100,11 @@ def run():
     st.header("X Ray Chat Application")
     st.selectbox("Select A LLM:", get_models(), key="selected_model")
 
+    # 執行圖片上傳與診斷流程，並將 LLM 回答顯示在第一則訊息中
     app_session_init()
-    prompt = st.chat_input("Add your prompt...")
 
+    # 後續可讓使用者進一步輸入訊息
+    prompt = st.chat_input("Add your prompt...")
     selected_model = st.session_state["selected_model"]
     print(f"Selected Model: {selected_model}")
     llm = ChatOllama(model=selected_model, temperature=0.7)
@@ -87,10 +113,8 @@ def run():
         st.chat_message("user").write(prompt)
         st.session_state["chat_history"] += [HumanMessage(prompt)]
         output = llm.stream(prompt) # an iterator for continuous talking
-
         with st.chat_message("ai"):
             ai_message = st.write_stream(output) # iterator
-        
         st.session_state["chat_history"] += [AIMessage(ai_message)]
 
 
