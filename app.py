@@ -1,29 +1,47 @@
 import sys
 import numpy as np
-from io import BytesIO
 from PIL import Image
+from io import BytesIO
 
 import ollama
 import streamlit as st
 from langchain_core.messages import AIMessage, HumanMessage
 from langchain_ollama import ChatOllama
 
+from ultralytics import YOLO
+model = YOLO('models/runs_v5_detect_classification/detect/train/weights/best.pt')
 
 def app_session_init():
     # create a uploader for image
-    uploaded_file = st.file_uploader("Upload a file")
-    # st.button("Detect", type="primary")
+    uploaded_file = st.file_uploader("Upload a file", type=['jpg', 'jpeg', 'png'])
+    # st.button("Detect", type="secondary", icon="✨")
+    
     if uploaded_file:
-        st.write("Filename: ", uploaded_file.name)
-        
-        # To read file as bytes:
-        bytes_data = uploaded_file.getvalue()
+        # Show original image
         caption = uploaded_file.name
-        st.image(image=bytes_data, caption=caption, channels='RGB')
-        # Convert bytes to a PIL image
-        # image = Image.open(BytesIO(bytes_data))
-        # Convert to a numpy array
-        # numpy_array = np.array(image)
+        image_bytes_data = BytesIO(uploaded_file.getvalue())
+        st.image(image=image_bytes_data, caption=caption, channels='RGB')
+
+        image_bytes_data.seek(0)
+        image = Image.open(image_bytes_data).convert('RGB')
+        image_array = np.array(image)
+        print(image_array.shape)
+        
+        # X-ray fracture detection
+        results = model(image_array)
+
+        # Access class names
+        class_id, class_name, conf = '', '', ''
+        for r in results:
+            boxes = r.boxes  # Boxes object for bounding box outputs
+            for box in boxes:
+                class_id = box.cls  # Get class index
+                class_name = r.names[int(class_id)]  # Get class name from names dictionary
+                conf = box.conf  # Get confidence scores
+
+        img_bbox = results[0].plot()
+        diagnosis = f"Diagnosis: {('fracture' if class_name=='positive' else 'normal')} || Confidence: {conf.cpu().numpy()[0]:.2f}"
+        st.image(image=img_bbox, caption=diagnosis, channels='RGB')        
 
     # create a session for chat history
     if "chat_history" not in st.session_state:
@@ -78,6 +96,3 @@ def run():
 
 if __name__ == "__main__":
     run()
-    
-    # To convert to a numpy array:
-    # numpy_array = np.fromstring(bytes_data, dtype=np.uint8)
