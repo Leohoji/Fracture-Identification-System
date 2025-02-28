@@ -12,12 +12,13 @@ from langchain_ollama import ChatOllama
 def app_session_init():
     # create a uploader for image
     uploaded_file = st.file_uploader("Upload a file")
+    # st.button("Detect", type="primary")
     if uploaded_file:
         st.write("Filename: ", uploaded_file.name)
         
         # To read file as bytes:
         bytes_data = uploaded_file.getvalue()
-        caption = "I am a cat"
+        caption = uploaded_file.name
         st.image(image=bytes_data, caption=caption, channels='RGB')
         # Convert bytes to a PIL image
         # image = Image.open(BytesIO(bytes_data))
