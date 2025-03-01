@@ -175,9 +175,6 @@ def run():
 
             # Set flag indicating diagnosis has been processed
             st.session_state["diagnosis_done"] = True
-
-            # Force a rerun to refresh the UI with chat history
-            # st.rerun()
     
         # If diagnosis has be done, display the chat history
         elif st.session_state.get("diagnosis_done", False):
@@ -221,6 +218,7 @@ def run():
             
             # Add AI answer to chat history
             st.session_state["chat_history"].append(AIMessage(ai_response))
+            
             # Force a rerun to refresh the UI with chat history
             st.rerun()
 
