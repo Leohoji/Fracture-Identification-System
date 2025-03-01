@@ -1,2 +1,4 @@
 YOLODataSet
 models
+.ipynb_checkpoints
+.vscode
