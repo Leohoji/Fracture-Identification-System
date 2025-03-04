@@ -10,7 +10,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 from langchain_ollama import ChatOllama
 
 from ultralytics import YOLO
-model = YOLO('models/runs_v5_detect_classification/detect/train/weights/best.pt')
+YOLO_PATH = 'models/runs_v5_detect_classification/detect/train/weights/best.pt'
 
 def app_session_init():
     # Chat history initialization
@@ -41,6 +41,14 @@ def app_session_init():
     if "llm_suggestion" not in st.session_state:
         st.session_state["llm_suggestion"] = None
 
+    if "yolo_model" not in st.session_state:
+        with st.spinner("Loading YOLO model..."):
+            try:
+                st.session_state["yolo_model"] = YOLO(YOLO_PATH)
+            except Exception as e:
+                st.error(f"Error loading YOLO model: {str(e)}")
+                st.session_state["yolo_model"] = None
+            
     # LLM initialization
     selected_model = st.session_state["selected_model"]
     llm = ChatOllama(model=selected_model, temperature=0.7)
@@ -48,36 +56,41 @@ def app_session_init():
     return llm
 
 def process_image(uploaded_file):
+    """Process uploaded image to bone fracture analysis."""        
+    if st.session_state["yolo_model"] is None:
+        st.error("YOLO model is not loaded properly. Cannot process image.")
+        return None
+    
+    image_bytes_data = BytesIO(uploaded_file.getvalue())
+    original_image = Image.open(image_bytes_data).convert('RGB')
+    image_array = np.array(original_image)
+    
+    # X-ray fracture detection
+    with st.spinner("Analyzing X-ray image..."):
+        results = st.session_state["yolo_model"](image_array)
 
-        image_bytes_data = BytesIO(uploaded_file.getvalue())
-        original_image = Image.open(image_bytes_data).convert('RGB')
-        image_array = np.array(original_image)
-        
-        # X-ray fracture detection
-        results = model(image_array)
+    # Access class names
+    class_id, class_name, conf = '', '', ''
+    for r in results:
+        boxes = r.boxes  # Boxes object for bounding box outputs
+        for box in boxes:
+            class_id = box.cls  # Get class index
+            class_name = r.names[int(class_id)]  # Get class name from names dictionary
+            conf = box.conf  # Get confidence scores
 
-        # Access class names
-        class_id, class_name, conf = '', '', ''
-        for r in results:
-            boxes = r.boxes  # Boxes object for bounding box outputs
-            for box in boxes:
-                class_id = box.cls  # Get class index
-                class_name = r.names[int(class_id)]  # Get class name from names dictionary
-                conf = box.conf  # Get confidence scores
+    img_bbox = results[0].plot()
+    diagnosis_result = 'fracture' if class_name == 'positive' else 'normal'
+    conf_value = conf.cpu().item() if hasattr(conf, 'cpu') else float(conf)
+    diagnosis = f"Diagnosis: {diagnosis_result} || Confidence: {conf_value:.2f}"
 
-        img_bbox = results[0].plot()
-        diagnosis_result = 'fracture' if class_name == 'positive' else 'normal'
-        conf_value = conf.cpu().item() if hasattr(conf, 'cpu') else float(conf)
-        diagnosis = f"Diagnosis: {diagnosis_result} || Confidence: {conf_value:.2f}"
+    # Save processed results into session_state
+    st.session_state["image_data"] = original_image
+    st.session_state["diagnosis_img"] = Image.fromarray(img_bbox)
+    st.session_state["diagnosis_result"] = diagnosis_result
+    st.session_state["diagnosis_confidence"] = conf_value
+    st.session_state["diagnosis_text"] = diagnosis
 
-        # Save processed results into session_state
-        st.session_state["image_data"] = original_image
-        st.session_state["diagnosis_img"] = Image.fromarray(img_bbox)
-        st.session_state["diagnosis_result"] = diagnosis_result
-        st.session_state["diagnosis_confidence"] = conf_value
-        st.session_state["diagnosis_text"] = diagnosis
-
-        return diagnosis
+    return diagnosis
 
 def display_saved_image_and_diagnosis(f_name="diagnosis"):
     # Only display when there is saved image data in the session
@@ -123,8 +136,15 @@ def get_models():
 
 
 def run():
-    st.set_page_config(page_title="Chat Application")
-    st.header("X Ray Chat Application")
+    st.set_page_config(
+        page_title="X-Ray Fracture Detection",
+        page_icon="📊",
+        layout="wide"
+    )
+    st.title("📊 X-Ray Fracture Detection Assistant")
+    st.markdown("""
+    This application analyzes X-ray images to detect bone fractures and provides medical suggestions through an AI assistant.
+    """)
     
     # Initialize LLM and session state
     llm = app_session_init()
