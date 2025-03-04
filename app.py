@@ -79,17 +79,12 @@ def process_image(uploaded_file):
 
         return diagnosis
 
-def display_saved_image_and_diagnosis():
+def display_saved_image_and_diagnosis(f_name="diagnosis"):
     # Only display when there is saved image data in the session
-    if st.session_state["image_data"] is not None:
-        # Display original image
-        st.image(st.session_state["image_data"], caption="Original X-ray", channels='RGB')
-        
+    if st.session_state["image_data"] is not None:       
         # Display marked diagnosis image
         if st.session_state["diagnosis_img"] is not None:
-            st.image(st.session_state["diagnosis_img"], 
-                     caption=f"Diagnosis: {st.session_state['diagnosis_result']} || Confidence: {st.session_state['diagnosis_confidence']:.2f}", 
-                     channels='RGB')
+            st.image(st.session_state["diagnosis_img"], caption=f_name, channels='RGB')
         
         # Display diagnosis summary table
         if st.session_state["llm_suggestion"] is not None:
@@ -167,6 +162,7 @@ def run():
                 AIMessage(llm_answer)
             ]
             
+            # summary...
             # Save LLM suggestion for display in summary
             st.session_state["llm_suggestion"] = llm_answer
 
