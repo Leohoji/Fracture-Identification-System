@@ -10,6 +10,7 @@ from langchain_core.messages import AIMessage, HumanMessage
 from langchain_ollama import ChatOllama
 
 from ultralytics import YOLO
+DEFAULT_MODEL = "llama3.2"
 YOLO_PATH = 'models/runs_v5_detect_classification/detect/train/weights/best.pt'
 
 def app_session_init():
@@ -23,7 +24,7 @@ def app_session_init():
     
     # Model initialization
     if "selected_model" not in st.session_state:
-        st.session_state["selected_model"] = "llama3.2"
+        st.session_state["selected_model"] = DEFAULT_MODEL
 
     # Save images and diagnosis
     if "image_data" not in st.session_state:
@@ -138,7 +139,7 @@ def get_models():
 def run():
     st.set_page_config(
         page_title="X-Ray Fracture Detection",
-        page_icon="📊",
+        page_icon="🧊",
         layout="wide"
     )
     st.title("📊 X-Ray Fracture Detection Assistant")
@@ -148,6 +149,34 @@ def run():
     
     # Initialize LLM and session state
     llm = app_session_init()
+
+    # Sidebar for settings and information
+    with st.sidebar:
+        st.header("Settings")
+        models = get_models()
+        selected_model = st.selectbox(
+            "Select LLM Model", 
+            options=models,
+            index=models.index(st.session_state["selected_model"]) if st.session_state["selected_model"] in models else 0
+        )
+        
+        if selected_model != st.session_state["selected_model"]:
+            st.session_state["selected_model"] = selected_model
+            st.rerun()
+            
+        if st.button("Reset Application", type="secondary", icon="🚨"):
+            for key in list(st.session_state.keys()):
+                del st.session_state[key]
+            st.rerun()
+            
+        st.markdown("---")
+        st.markdown("### About")
+        st.markdown("""
+        This application uses:
+        - YOLO for X-ray image analysis
+        - Ollama LLM for medical advice
+        - Streamlit for the user interface
+        """)
 
     # Create three blocks: image upload, image show, and chat block
     col1, col2 = st.columns([1, 1])
