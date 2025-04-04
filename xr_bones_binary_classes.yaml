@@ -1,0 +1,9 @@
+# xr_bones.yaml
+train: C:/Users/User/Desktop/bone_fracture_detection_project/YOLODataSet/FracAtlas_dataset/images/train
+val: C:/Users/User/Desktop/bone_fracture_detection_project/YOLODataSet/FracAtlas_dataset/images/val
+
+# Number of classes
+nc: 2
+
+# Class names
+names: ["negative", "positive"]

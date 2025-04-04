@@ -11,7 +11,8 @@ from langchain_ollama import ChatOllama
 
 from ultralytics import YOLO
 DEFAULT_MODEL = "llama3.2"
-YOLO_PATH = 'models/runs_v5_detect_classification/detect/train/weights/best.pt'
+# YOLO_PATH = 'models/runs_v5_detect_classification/detect/train/weights/best.pt'
+YOLO_PATH = 'C:/Users/User/Desktop/bone_fracture_detection_project/runs/detect/train6/weights/best.pt'
 
 def app_session_init():
     # Chat history initialization
@@ -80,9 +81,9 @@ def process_image(uploaded_file):
             conf = box.conf  # Get confidence scores
 
     img_bbox = results[0].plot()
-    diagnosis_result = 'fracture' if class_name == 'positive' else 'normal'
+    diagnosis_result = 'bone-fractured' if class_name == 'positive' else 'normal'
     conf_value = conf.cpu().item() if hasattr(conf, 'cpu') else float(conf)
-    diagnosis = f"Diagnosis: {diagnosis_result} || Confidence: {conf_value:.2f}"
+    diagnosis = f"My initial diagnosis {diagnosis_result}, and my confidence level is {conf_value:.2f}."
 
     # Save processed results into session_state
     st.session_state["image_data"] = original_image
@@ -182,46 +183,54 @@ def run():
     col1, col2 = st.columns([1, 1])
 
     with col1:
-        uploaded_file = st.file_uploader("Upload an X-ray image", type=['jpg', 'jpeg', 'png']) # Image upload block
+        st.header("Upload X-ray Image")
+        uploaded_file = st.file_uploader("Choose an X-ray image file", type=['jpg', 'jpeg', 'png']) # Image upload block
 
         # Process image and diagnosis
         if uploaded_file and not st.session_state.get("diagnosis_done", False):
             # Process image and get diagnosis
             diagnosis = process_image(uploaded_file)
 
-            # Ask LLM based on diagnosis results
-            diagnosis_prompt = f"Based on the following X-ray diagnosis, what further examination or treatment might the patient need? Please provide a short answer (10 words max). \n{diagnosis}"
-            
-            # Add diagnosis question to chat history
-            st.session_state["chat_history"] = [HumanMessage(diagnosis_prompt)]
 
-             # Get LLM response (without displaying in UI yet)
-            llm_answer = ""
-            # Use proper content extraction from chunks
-            for chunk in llm.stream(diagnosis_prompt):
-                if hasattr(chunk, 'content'):
-                    llm_answer += chunk.content
-                else:
-                    # Fallback in case chunk format changes
-                    llm_answer += str(chunk)
-            
-            # Initialize chat history with diagnosis Q&A
-            st.session_state["chat_history"] = [
-                HumanMessage(diagnosis_prompt),
-                AIMessage(llm_answer)
-            ]
-            
-            # summary...
-            # Save LLM suggestion for display in summary
-            st.session_state["llm_suggestion"] = llm_answer
+            with st.spinner("Getting AI Advices..."):
+                # Ask LLM based on diagnosis results
+                diagnosis_prompt = f"Here is the initial diagnosis from YOLO model:\n ```{diagnosis}```.\nBased on the above X-ray diagnosis, what further examination or treatment might the patient need? Please provide some non-medical advices."
+                
+                # Get LLM response (without displaying in UI yet)
+                llm_answer = "" 
 
-            # Directly display diagnosis image and summary
-            display_saved_image_and_diagnosis()
+                # Use proper content extraction from chunks
+                for chunk in llm.stream(diagnosis_prompt):
+                    if hasattr(chunk, 'content'):
+                        llm_answer += chunk.content
+                    else:
+                        # Fallback in case chunk format changes
+                        llm_answer += str(chunk)
+                
+                # Initialize chat history with diagnosis Q&A
+                st.session_state["chat_history"] = [
+                    HumanMessage(diagnosis_prompt),
+                    AIMessage(llm_answer)
+                ]
+                
+                # summary the output of LLM's advices
+                llm_suggestion = ""
+                for chunk in llm.stream(f"Output the summary of the following advices in one sentences directly.\n```{llm_answer}```"):
+                    if hasattr(chunk, 'content'):
+                        llm_suggestion += chunk.content
+                    else:
+                        # Fallback in case chunk format changes
+                        llm_suggestion += str(chunk)
+                # Save LLM suggestion for display in summary
+                st.session_state["llm_suggestion"] = llm_suggestion
 
-            # Set flag indicating diagnosis has been processed
-            st.session_state["diagnosis_done"] = True
-    
-        # If diagnosis has be done, display the chat history
+                # Directly display diagnosis image and summary
+                display_saved_image_and_diagnosis()
+
+                # Set flag indicating diagnosis has been processed
+                st.session_state["diagnosis_done"] = True
+        
+        # If diagnosis has been done, display the result
         elif st.session_state.get("diagnosis_done", False):
             display_saved_image_and_diagnosis()
 
@@ -234,12 +243,12 @@ def run():
             
     # Chat input box (only displayed after diagnosis is completed)
     if st.session_state.get("diagnosis_done", False):
+        
         # Add chat input box at the bottom of the page
         prompt = st.chat_input("Enter your question...")
         
         if prompt:
             # User's question is added to chat history later
-            
             # Process response and add to chat history
             # First add to chat history
             st.session_state["chat_history"].append(HumanMessage(prompt))
