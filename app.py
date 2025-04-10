@@ -12,7 +12,8 @@ from langchain_ollama import ChatOllama
 from ultralytics import YOLO
 DEFAULT_MODEL = "llama3.2"
 # YOLO_PATH = 'models/runs_v5_detect_classification/detect/train/weights/best.pt'
-YOLO_PATH = 'C:/Users/User/Desktop/bone_fracture_detection_project/runs/detect/train6/weights/best.pt'
+# YOLO_PATH = 'C:/Users/User/Desktop/bone_fracture_detection_project/runs/detect/train6/weights/best.pt'
+YOLO_PATH = 'C:/Users/User/Desktop/bone_fracture_detection_project/XRayDetection/yolov5/weights/best.pt'
 
 def app_session_init():
     # Chat history initialization
