@@ -12,7 +12,8 @@ from langchain_ollama import ChatOllama
 from ultralytics import YOLO
 # DEFAULT_MODEL = "hf.co/loholeo/medical-Phi-3.5-mini-instruct:latest"
 DEFAULT_MODEL = "llama3.2:latest"
-YOLO_PATH = 'C:/Users/User/Desktop/bone_fracture_detection_project/XRayDetection/yolov5/weights/best.pt'
+YOLO_PATH = 'XRayDetection/yolov5/weights/best.pt'
+yolo_model = YOLO(YOLO_PATH)
 
 def app_session_init():
     # Initialize basic state variables using setdefault
@@ -26,7 +27,7 @@ def app_session_init():
     if "yolo_model" not in st.session_state:
         with st.spinner("Loading YOLO model..."):
             try:
-                st.session_state["yolo_model"] = YOLO(YOLO_PATH)
+                st.session_state["yolo_model"] = yolo_model
             except Exception as e:
                 st.error(f"Error loading YOLO model: {str(e)}")
                 st.session_state["yolo_model"] = None
@@ -110,14 +111,13 @@ def get_models():
     
     return [model["model"] for model in models["models"]]
 
-
 def run():
     st.set_page_config(
         page_title="X-Ray Fracture Detection",
         page_icon="🧊",
         layout="wide"
     )
-    st.title("📊 X-Ray Fracture Detection Assistant")
+    st.title("🕵️‍♂️ X-Ray Fracture Detection Assistant")
     st.markdown("""
     This application analyzes X-ray images to detect bone fractures and provides medical suggestions through an AI assistant.
     """)
