@@ -19,11 +19,9 @@ def app_session_init():
     st.session_state.setdefault("chat_history", []) # chat history
     st.session_state.setdefault("diagnosis_done", False) # diagnosis flag
     st.session_state.setdefault("selected_model", DEFAULT_MODEL) # LLM model
-    st.session_state.setdefault("image_data", None) # images
     st.session_state.setdefault("diagnosis_result", None)
     st.session_state.setdefault("diagnosis_confidence", None)
     st.session_state.setdefault("diagnosis_img", None)
-    st.session_state.setdefault("llm_suggestion", None)
     
     if "yolo_model" not in st.session_state:
         with st.spinner("Loading YOLO model..."):
@@ -64,16 +62,13 @@ def process_image(uploaded_file):
         for box in boxes:
             class_id = box.cls  # Get class index
             class_name = r.names[int(class_id)]  # Get class name from names dictionary
-            print(class_name)
             confidences.append(box.conf.cpu().numpy())
-    
-    # diagnosis_result = 'bone-fractured' if class_name == 'positive' else 'normal'
-    diagnosis_result = class_name
+
+    diagnosis_result = 'fractured' if class_name == 'Fractured' else 'normal'
     conf_value = np.mean(confidences)
-    diagnosis = f"The patient has a initial diagnosis {diagnosis_result}, and the confidence level is {conf_value:.2f}."
+    diagnosis = f"The X-ray shows that the person has a {diagnosis_result} bone with a confidence level of {conf_value:.2f}."
 
     # Save processed results into session_state
-    st.session_state["image_data"] = original_image
     st.session_state["diagnosis_img"] = Image.fromarray(img_bbox)
     st.session_state["diagnosis_result"] = diagnosis_result
     st.session_state["diagnosis_confidence"] = conf_value
@@ -81,25 +76,22 @@ def process_image(uploaded_file):
 
     return diagnosis
 
-def display_saved_image_and_diagnosis(f_name="diagnosis"):
-    # Only display when there is saved image data in the session
-    if st.session_state["image_data"] is not None:       
-        # Display marked diagnosis image
-        if st.session_state["diagnosis_img"] is not None:
-            st.image(st.session_state["diagnosis_img"], caption=f_name, channels='RGB')
-        
-        # Display diagnosis summary table
-        if st.session_state["llm_suggestion"] is not None:
-            st.subheader("Diagnosis Summary")
-            data = {
-                "Value": [
-                    st.session_state["diagnosis_result"],
-                    f"{st.session_state['diagnosis_confidence']:.2f}",
-                    st.session_state["llm_suggestion"]
-                ]
-            }
-            df = pd.DataFrame(data, index=["Diagnosis", "Confidence", "Recommendations"])
-            st.table(df)
+def display_saved_image_and_diagnosis(f_name="diagnosis"):     
+    # Display marked diagnosis image
+    if st.session_state["diagnosis_img"] is not None:
+        st.image(st.session_state["diagnosis_img"], caption=f_name, channels='RGB')
+    
+    # Display diagnosis summary table
+    if st.session_state["diagnosis_done"] is not None:
+        st.subheader("Diagnosis Summary")
+        data = {
+            "Value": [
+                st.session_state["diagnosis_result"],
+                f"{st.session_state['diagnosis_confidence']:.2f}"
+            ]
+        }
+        df = pd.DataFrame(data, index=["Diagnosis", "Confidence"])
+        st.table(df)
         
 def render_chat_history(container):
     # Render chat history to the specified container
@@ -175,36 +167,42 @@ def run():
 
 
             with st.spinner("Getting AI Advices..."):
-                # Ask LLM based on diagnosis results
-                diagnosis_prompt = f"Here is the initial diagnosis from YOLO model:\n ```{diagnosis}```.\nBased on the above X-ray diagnosis, what further examination or treatment might the patient need? Please provide some non-medical advices."
+                if st.session_state["selected_model"] == "llama3.2:latest":
+                    diagnosis_prompt = """{} Please provide some daily living suggestions that may be helpful during recovery, such as non-medical suggestions on how to adjust to temporary mobility issues, home environment adjustments, psychological adjustments, or safe recreational activities that can be carried out during recovery. Please make it clear that you are not providing medical advice and that any recovery-related decisions should be made in consultation with a medical professional.
+                    """.format(diagnosis)
+                else:
+                    # Ask LLM based on diagnosis results
+                    diagnosis_prompt = """Below is an instruction that describes a task, paired with an input that provides further context.\nWrite a response that appropriately completes the request.\nBefore answering, think carefully about the question and create a step-by-step chain of thoughts to ensure a logical and accurate response.\n
+                    
+                    ### Instruction:
+                    You are a medical expert with advanced knowledge in clinical reasoning, diagnostics, and treatment planning.
+                    Please answer the following medical question, output a response for detail solution and a 50 words summarization.
+
+                    ### Question:
+                    {}
+
+                    ### Response:
+                    {}
+
+                    ### Summary:
+                    {}""".format(diagnosis, "", "")
                 
                 # Get LLM response (without displaying in UI yet)
-                llm_answer = "" 
+                full_response = "" 
 
                 # Use proper content extraction from chunks
                 for chunk in llm.stream(diagnosis_prompt):
                     if hasattr(chunk, 'content'):
-                        llm_answer += chunk.content
+                        full_response += chunk.content
                     else:
                         # Fallback in case chunk format changes
-                        llm_answer += str(chunk)
+                        full_response += str(chunk)
                 
                 # Initialize chat history with diagnosis Q&A
                 st.session_state["chat_history"] = [
                     HumanMessage(diagnosis_prompt),
-                    AIMessage(llm_answer)
+                    AIMessage(full_response)
                 ]
-                
-                # summary the output of LLM's advices
-                llm_suggestion = ""
-                for chunk in llm.stream(f"Output the summary of the following advices in one sentences directly.\n```{llm_answer}```"):
-                    if hasattr(chunk, 'content'):
-                        llm_suggestion += chunk.content
-                    else:
-                        # Fallback in case chunk format changes
-                        llm_suggestion += str(chunk)
-                # Save LLM suggestion for display in summary
-                st.session_state["llm_suggestion"] = llm_suggestion
 
                 # Directly display diagnosis image and summary
                 display_saved_image_and_diagnosis()
