@@ -10,40 +10,21 @@ from langchain_core.messages import AIMessage, HumanMessage
 from langchain_ollama import ChatOllama
 
 from ultralytics import YOLO
-DEFAULT_MODEL = "llama3.2"
-# YOLO_PATH = 'models/runs_v5_detect_classification/detect/train/weights/best.pt'
-# YOLO_PATH = 'C:/Users/User/Desktop/bone_fracture_detection_project/runs/detect/train6/weights/best.pt'
+# DEFAULT_MODEL = "hf.co/loholeo/medical-Phi-3.5-mini-instruct:latest"
+DEFAULT_MODEL = "llama3.2:latest"
 YOLO_PATH = 'C:/Users/User/Desktop/bone_fracture_detection_project/XRayDetection/yolov5/weights/best.pt'
 
 def app_session_init():
-    # Chat history initialization
-    if "chat_history" not in st.session_state:
-        st.session_state["chat_history"] = []
-
-    # Ensure the initialization of diagnosis flag
-    if "diagnosis_done" not in st.session_state:
-        st.session_state["diagnosis_done"] = False
+    # Initialize basic state variables using setdefault
+    st.session_state.setdefault("chat_history", []) # chat history
+    st.session_state.setdefault("diagnosis_done", False) # diagnosis flag
+    st.session_state.setdefault("selected_model", DEFAULT_MODEL) # LLM model
+    st.session_state.setdefault("image_data", None) # images
+    st.session_state.setdefault("diagnosis_result", None)
+    st.session_state.setdefault("diagnosis_confidence", None)
+    st.session_state.setdefault("diagnosis_img", None)
+    st.session_state.setdefault("llm_suggestion", None)
     
-    # Model initialization
-    if "selected_model" not in st.session_state:
-        st.session_state["selected_model"] = DEFAULT_MODEL
-
-    # Save images and diagnosis
-    if "image_data" not in st.session_state:
-        st.session_state["image_data"] = None
-    
-    if "diagnosis_result" not in st.session_state:
-        st.session_state["diagnosis_result"] = None
-    
-    if "diagnosis_confidence" not in st.session_state:
-        st.session_state["diagnosis_confidence"] = None
-    
-    if "diagnosis_img" not in st.session_state:
-        st.session_state["diagnosis_img"] = None
-
-    if "llm_suggestion" not in st.session_state:
-        st.session_state["llm_suggestion"] = None
-
     if "yolo_model" not in st.session_state:
         with st.spinner("Loading YOLO model..."):
             try:
@@ -73,18 +54,23 @@ def process_image(uploaded_file):
         results = st.session_state["yolo_model"](image_array)
 
     # Access class names
-    class_id, class_name, conf = '', '', ''
+    class_id, class_name = '', ''
+    confidences = []
+    img_bbox = None
+
     for r in results:
+        img_bbox = r.plot()
         boxes = r.boxes  # Boxes object for bounding box outputs
         for box in boxes:
             class_id = box.cls  # Get class index
             class_name = r.names[int(class_id)]  # Get class name from names dictionary
-            conf = box.conf  # Get confidence scores
-
-    img_bbox = results[0].plot()
-    diagnosis_result = 'bone-fractured' if class_name == 'positive' else 'normal'
-    conf_value = conf.cpu().item() if hasattr(conf, 'cpu') else float(conf)
-    diagnosis = f"My initial diagnosis {diagnosis_result}, and my confidence level is {conf_value:.2f}."
+            print(class_name)
+            confidences.append(box.conf.cpu().numpy())
+    
+    # diagnosis_result = 'bone-fractured' if class_name == 'positive' else 'normal'
+    diagnosis_result = class_name
+    conf_value = np.mean(confidences)
+    diagnosis = f"The patient has a initial diagnosis {diagnosis_result}, and the confidence level is {conf_value:.2f}."
 
     # Save processed results into session_state
     st.session_state["image_data"] = original_image
@@ -129,13 +115,8 @@ def get_models():
     if not models:
         print("No models found, please visit: https://ollama.dev/models")
         sys.exit(1)
-
-    models_list = []
-    for model in models["models"]:
-        if model["model"] == "llama3.2:latest":
-            models_list.append(model["model"])
     
-    return models_list
+    return [model["model"] for model in models["models"]]
 
 
 def run():
