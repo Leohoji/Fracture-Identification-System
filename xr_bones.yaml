@@ -1,9 +1,0 @@
-# xr_bones.yaml
-train: C:/Users/User/Desktop/bone_fracture_detection_project/YOLODataSet/dataset/images/train
-val: C:/Users/User/Desktop/bone_fracture_detection_project/YOLODataSet/dataset/images/val
-
-# Number of classes
-nc: 1
-
-# Class names
-names: ["positive"]
