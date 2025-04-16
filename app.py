@@ -13,7 +13,14 @@ from ultralytics import YOLO
 # DEFAULT_MODEL = "hf.co/loholeo/medical-Phi-3.5-mini-instruct:latest"
 DEFAULT_MODEL = "llama3.2:latest"
 YOLO_PATH = 'XRayDetection/yolov5/weights/best.pt'
-yolo_model = YOLO(YOLO_PATH)
+
+@st.cache_resource
+def get_yolo_model(model_path):
+    return YOLO(model_path)
+
+@st.cache_resource
+def get_llm_model(model_name, temperature=0.7):
+    return ChatOllama(model=model_name, temperature=temperature)
 
 def app_session_init():
     # Initialize basic state variables using setdefault
@@ -27,6 +34,7 @@ def app_session_init():
     if "yolo_model" not in st.session_state:
         with st.spinner("Loading YOLO model..."):
             try:
+                yolo_model = get_yolo_model(YOLO_PATH)
                 st.session_state["yolo_model"] = yolo_model
             except Exception as e:
                 st.error(f"Error loading YOLO model: {str(e)}")
@@ -34,7 +42,7 @@ def app_session_init():
             
     # LLM initialization
     selected_model = st.session_state["selected_model"]
-    llm = ChatOllama(model=selected_model, temperature=0.7)
+    llm = get_llm_model(model_name=selected_model, temperature=0.7)
 
     return llm
 
