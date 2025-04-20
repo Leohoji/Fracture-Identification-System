@@ -21,37 +21,16 @@ This project is a system of YOLO-based for bone fracture detection and LLM for n
    ```
 2. Clone and enter this repository:
    ```bash
-   git clone https://github.com/Leohoji/dog-cat-breed-classification-system.git
-   cd dog-cat-breed-classification-system
+   git clone https://github.com/Leohoji/Fracture-Identification-System.git
+   cd Fracture-Identification-System
    ```
-3. Set MySQL database
-   Download the [MySQL](https://www.mysql.com/downloads/) data base to your local computer, and create a file named `mysql_info.py ` to save the path to `\CatDogClassification\mysql_info.py`:
-   ```python
-   HOST = 'localhost'
-   PORT = '3306'
-   USER = 'root'
-   PASSWORD = '' # your password
-   DATABASE_NAME = 'cat_dog_system'
-   ```
-4. Set Gmail app password
-   Set your [Gmail app passwords](https://support.google.com/mail/answer/185833?hl=en) for receiving verification code of **password forgetting** service, and create a file named `python_mail.py` to save the
-   path `\CatDogClassification\python_mail.py`:
-   ```python
-   Gmail_Account = '' # your Gmail account
-   Gmail_Password = "" # your Gmail app password
-   ```
-5. Prepare dataset for learning system
-   Download the dataset from [Cats and Dogs Breeds Classification Oxford Dataset](https://www.kaggle.com/datasets/zippyz/cats-and-dogs-breeds-classification-oxford-dataset) and put it to your own directory for model training.
-   
-7. Install required package
+3. Install required package
    ```bash
    pip install -r requirements.txt
-   conda install jupyter jupyterlab
    ```
-8. Run the django server
-   Run the following program instructions and copy the address `http://127.0.0.1:8000/` to your local device.
+8. Run the streamlit server
    ```bash
-   python manage.py runserver
+   streamlit run app.py
    ```
 
 # Project Author
