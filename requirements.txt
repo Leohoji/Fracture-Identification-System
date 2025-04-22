@@ -1,0 +1,12 @@
+jupyter==1.1.1
+jupyterlab==4.3.4
+matplotlib==3.9.4
+numpy==1.26.3
+ollama==0.4.7
+opencv-python==4.11.0.86
+pandas==2.2.3
+scikit-learn==1.6.1
+scipy==1.13.1
+seaborn==0.13.2
+streamlit==1.39.0
+ultralytics==8.3.59
