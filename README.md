@@ -16,7 +16,7 @@ This project is a system of YOLO-based for bone fracture detection and LLM for n
 
 1. Create and activate conda environment 
    ```bash
-   conda create --name xrayenv python=3.8
+   conda create --name xrayenv python=3.10
    conda activate xrayenv
    ```
 2. Clone and enter this repository:
@@ -26,6 +26,7 @@ This project is a system of YOLO-based for bone fracture detection and LLM for n
    ```
 3. Install required package
    ```bash
+   conda install jupyter jupyterlab
    pip install -r requirements.txt
    ```
 8. Run the streamlit server
